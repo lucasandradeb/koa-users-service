@@ -12,11 +12,12 @@ export async function auth(ctx: Context, next: Next) {
 
   const token = authHeader.slice('Bearer '.length).trim();
   try {
-    const email = await verifyToken(token);
-    ctx.state.email = email; // { sub, email, scope, raw }
+    const user = await verifyToken(token);
+    ctx.state.user = user; // { sub, email, scope, raw }
     await next();
   } catch (error) {
     ctx.status = 401;
-    ctx.body = { message: 'Invalid or expired token' };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    ctx.body = { message: 'Invalid or expired token', error: errorMessage };
   }
 }

@@ -3,7 +3,7 @@ import env from '../config/env';
 
 const verifier = CognitoJwtVerifier.create({
   userPoolId: env.cognito.userPoolId,
-  tokenUse: 'id',
+  tokenUse: 'access',
   clientId: env.cognito.clientId,
 });
 
