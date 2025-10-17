@@ -21,16 +21,26 @@ export async function editAccount(ctx: Context) {
     return;
   }
 
-  if (scopes.includes('admin')) {
-    if (name) user.name = name;
-    if (role) user.role = role;
-    await repo.save(user);
-    ctx.body = { user };
+  const isAdmin = scopes.includes('admin');
+
+  if (role && !isAdmin) {
+    ctx.status = 403;
+    ctx.body = { message: 'You do not have permission to change your role.' };
     return;
   }
 
-  if (name) user.name = name;
-  user.isOnboarded = true;
+  if (name) {
+    user.name = name;
+  }
+
+  if (isAdmin && role) {
+    user.role = role;
+  }
+
+  if (!isAdmin) {
+    user.isOnboarded = true;
+  }
+
   await repo.save(user);
   ctx.body = { user };
 }

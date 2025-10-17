@@ -1,4 +1,3 @@
-// src/middleware/auth.middleware.ts
 import { Context, Next } from 'koa';
 import { verifyToken } from '../services/cognito.service';
 
