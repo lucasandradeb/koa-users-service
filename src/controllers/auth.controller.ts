@@ -12,7 +12,7 @@ export async function signInOrRegister(ctx: Context) {
   let user = await repo.findOne({ where: { email } });
   if (!user) {
     user = repo.create({ email, name: email.split('@')[0], role: 'user', isOnboarded: false });
-    await repo.save(user);
+    user = await repo.save(user);
   }
   ctx.body = { user };
 }
