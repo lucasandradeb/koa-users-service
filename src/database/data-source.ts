@@ -11,7 +11,7 @@ export const AppDataSource = url
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
       entities: [User],
       migrations: ['src/database/migrations/*.ts'],
-      synchronize: false
+      synchronize: false,
     })
   : new DataSource({
       type: 'postgres',
@@ -22,7 +22,7 @@ export const AppDataSource = url
       database: process.env.DB_NAME,
       entities: [User],
       migrations: ['src/database/migrations/*.ts'],
-      synchronize: false
+      synchronize: false,
     });
 
 export default AppDataSource;
