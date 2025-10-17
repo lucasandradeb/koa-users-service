@@ -1,9 +1,14 @@
 {
   "name": "koa-users-service",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.ts",
+  "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc -p tsconfig.json",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "start": "node dist/server.js",
+    "typeorm": "ts-node ./node_modules/typeorm/cli.js -d src/database/data-source.ts"
   },
   "repository": {
     "type": "git",
@@ -31,6 +36,7 @@
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
     "@types/koa": "^3.0.0",
+    "@types/koa-bodyparser": "^4.3.12",
     "@types/koa-router": "^7.4.8",
     "@types/node": "^24.8.0",
     "eslint": "^9.37.0",
