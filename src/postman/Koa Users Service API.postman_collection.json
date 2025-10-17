@@ -1,0 +1,367 @@
+{
+	"info": {
+		"_postman_id": "f4776e3a-caf7-45e9-9e09-e3caaf834bc1",
+		"name": "Koa Users Service API",
+		"description": "Collection para testar a API de gerenciamento de usuários com autenticação Cognito",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "19541316"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Sign In or Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response has user object\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('user');",
+									"    pm.expect(jsonData.user).to.have.property('email', 'test@example.com');",
+									"});",
+									"pm.test(\"Error case: Missing email\", function () {",
+									"    if (pm.request.body.raw === '{}') {",
+									"        pm.response.to.have.status(400);",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.message).to.eql('email is required');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\": \"lucasab94@live.com\"}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Protected Routes",
+			"item": [
+				{
+					"name": "Get Me (with token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response has user object\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('user');",
+									"});",
+									"pm.test(\"Error case: No token\", function () {",
+									"    if (!pm.variables.get('token')) {",
+									"        pm.response.to.have.status(401);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "oauth2",
+							"oauth2": [
+								{
+									"key": "scope",
+									"value": "openid email ",
+									"type": "string"
+								},
+								{
+									"key": "addTokenTo",
+									"value": "header",
+									"type": "string"
+								},
+								{
+									"key": "useBrowser",
+									"value": false,
+									"type": "boolean"
+								},
+								{
+									"key": "authRequestParams",
+									"value": [
+										{
+											"key": "email",
+											"value": "lucasab94@live.com",
+											"enabled": false,
+											"send_as": "request_url"
+										}
+									],
+									"type": "any"
+								},
+								{
+									"key": "clientId",
+									"value": "4h4a2q88orodfhabg7b73iv6ds",
+									"type": "string"
+								},
+								{
+									"key": "grant_type",
+									"value": "authorization_code_with_pkce",
+									"type": "string"
+								},
+								{
+									"key": "clientSecret",
+									"value": "tnshjjh29lne55fgjvvp7s83clh4ikcph92n09ak1n8hk4nqmvb",
+									"type": "string"
+								},
+								{
+									"key": "redirect_uri",
+									"value": "https://oauth.pstmn.io/v1/callback",
+									"type": "string"
+								},
+								{
+									"key": "accessTokenUrl",
+									"value": "https://us-east-1zr4kclisd.auth.us-east-1.amazoncognito.com/oauth2/token",
+									"type": "string"
+								},
+								{
+									"key": "authUrl",
+									"value": "https://us-east-1zr4kclisd.auth.us-east-1.amazoncognito.com/oauth2/authorize",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Users (Admin only)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 for admin\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response has users array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('users').that.is.an('array');",
+									"});",
+									"pm.test(\"Error case: Non-admin\", function () {",
+									"    // Simule com token de user comum; espera 403",
+									"    if (pm.response.code === 403) {",
+									"        pm.expect(pm.response.json().message).to.include('Admin scope required');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Edit Account",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response has updated user\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('user');",
+									"    pm.expect(jsonData.user.name).to.eql('New Name');",
+									"});",
+									"pm.test(\"Error case: Non-admin trying to change role\", function () {",
+									"    if (pm.request.body.raw.includes('role')) {",
+									"        pm.response.to.have.status(403);",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.message).to.include('permission to change your role');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"name\": \"Mauricio MAX\"}"
+						},
+						"url": {
+							"raw": "{{base_url}}/edit-account",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"edit-account"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Health Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Response has ok: true\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.ok).to.eql(true);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "oauth2",
+		"oauth2": [
+			{
+				"key": "authRequestParams",
+				"value": [],
+				"type": "any"
+			},
+			{
+				"key": "addTokenTo",
+				"value": "header",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000"
+		},
+		{
+			"key": "token",
+			"value": ""
+		}
+	]
+}
