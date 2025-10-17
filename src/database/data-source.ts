@@ -16,6 +16,7 @@ const AppDataSource = url
     })
   : new DataSource({
       type: 'postgres',
+      host: env.database.host,
       port: Number(env.database.port),
       username: env.database.username,
       password: env.database.password,
