@@ -1,208 +1,249 @@
 # Koa Users Service
 
-Um serviço de **API REST** em **Node.js/TypeScript** para gerenciamento de usuários, utilizando **Koa.js**, **TypeORM**, **PostgreSQL** e **AWS Cognito** para autenticação e autorização.
+API REST em Node.js/TypeScript para gerenciamento de usuários, usando Koa.js, TypeORM, PostgreSQL e AWS Cognito (auth/authorization).
 
 ## Funcionalidades
-
-- **Autenticação:** Integração com AWS Cognito para validação de tokens (**ID Token** ou **Access Token**, conforme o fluxo).
-- **Gerenciamento de Usuários:** CRUD básico, com permissões baseadas em **grupos do Cognito** (`admin`/`user`).
-- **Rotas Protegidas:** Endpoints com middleware de **auth** e **autorização (RBAC)**.
-- **Banco de Dados:** PostgreSQL com **migrations** via TypeORM.
-- **Docker:** Ambiente containerizado para desenvolvimento.
+- Autenticação com AWS Cognito (validação de token e grupos para RBAC).
+- CRUD de usuários (foco em listagem e edição de conta).
+- Rotas protegidas por middleware de autenticação e autorização.
+- Banco PostgreSQL com migrations (TypeORM).
+- Docker Compose para desenvolvimento.
+- Documentação via Swagger (OpenAPI) e Collection do Postman.
 
 ## Pré-requisitos
+- Docker e Docker Compose
+- Node.js 18+ (opcional, se rodar localmente)
+- User Pool do Cognito configurado (domínio, client, grupos)
 
-- **Docker** e **Docker Compose** instalados.
-- **Conta AWS** com **User Pool do Cognito** configurado (para auth real).
-- **Node.js 18+** _(opcional, se rodar localmente sem Docker)_.
+## Configuração
 
----
-
-## Instalação e Configuração
-
-### 1) Clone o repositório
-
+1) Clone o repositório
 ```bash
 git clone <URL_DO_REPO>
 cd <PASTA_DO_REPO>
 ```
 
-### 2) Configure o arquivo `.env`
-
-Copie o arquivo de exemplo e preencha com suas credenciais.
-
+2) Configure o .env
 ```bash
 cp .env.example .env
 ```
+Defina:
+- DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME
+- COGNITO_REGION, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, COGNITO_DOMAIN
+- PORT=3000
 
-Edite `.env` com:
-
-- Credenciais do **PostgreSQL** (`DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME` etc.)
-- Configurações do **Cognito** (`COGNITO_REGION`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, `COGNITO_DOMAIN`)
-- **Porta** da API (`PORT`, padrão: `3000`)
-
-**Exemplo:**
-
-```env
-# App
-PORT=3000
-NODE_ENV=development
-
-# DB
-DB_HOST=postgres
-DB_PORT=5432
-DB_USER=postgres
-DB_PASS=postgres
-DB_NAME=users_db
-
-# Cognito
-COGNITO_REGION=us-east-1
-COGNITO_USER_POOL_ID=us-east-1_xxxxxxxx
-COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
-COGNITO_DOMAIN=seu-dominio.auth.us-east-1.amazoncognito.com
-```
-
-### 3) Construa e inicie os containers
-
+3) Suba os serviços
 ```bash
 docker compose up -d --build
 ```
 
-Isso iniciará:
-
-- **API** (porta `3000`)
-- **PostgreSQL** (porta `5432`)
-
-### 4) Execute as migrations
-
+4) Rode as migrations
 ```bash
 npm run migration:run
 ```
 
-Isso criará as tabelas no banco.
+## Execução
+- Dev: `npm run dev`
+- Prod: `npm run build && npm start`
 
----
+## Endpoints
 
-## Uso
+- GET /health
+  - Público. Verifica o status da API.
 
-### Endpoints disponíveis
+- POST /auth/signin
+  - Público. Cria/retorna usuário no banco a partir do email no body.
+  - Body: `{ "email": "user@example.com" }`
 
-- `GET /health` — Status da API (**público**)
-- `POST /auth/signin` — Cria/busca usuário por e-mail (**público**; usado para registrar no seu DB)
-- `POST /me` — Retorna dados do usuário autenticado (**protegido**)
-- `GET /users` — Lista todos os usuários (**protegido**, apenas **admin**)
-- `POST /edit-account` — Edita nome/role do usuário (**protegido**; permissões variam por escopo)
+- POST /me
+  - Protegido. Valida o token e usa o email enviado no body para retornar o usuário do banco.
+  - Header: `Authorization: Bearer <token>`
+  - Body: `{ "email": "user@example.com" }`
 
-> Observação: dependendo da sua implementação, `/me` pode ser `GET`. Ajuste aqui conforme seu código.
+- GET /users
+  - Protegido (apenas admin). Lista todos os usuários cadastrados.
+  - Header: `Authorization: Bearer <token>`
 
-### Exemplos de requisições com cURL
+- POST /edit-account
+  - Protegido. Usuário comum: pode alterar apenas `name` (e marca `isOnboarded=true`). Admin: pode alterar `name` e `role`.
+  - Header: `Authorization: Bearer <token>`
+  - Body: `{ "name": "Novo Nome", "role": "admin" | "user" }` (role é ignorado/rejeitado para não-admin)
 
-#### 1) Health Check (público)
+Observação sobre autorização:
+- A verificação de “admin” é feita via grupos do Cognito (claim `cognito:groups` → `['admin']`). Garanta que o token enviado contenha os grupos (recomendado: ID Token com `openid email profile`).
 
+## Swagger (OpenAPI)
+
+- UI: http://localhost:3000/swagger
+- Spec JSON: http://localhost:3000/swagger.json
+
+As anotações estão nos controllers/rotas. Ajuste `src/swagger.ts` conforme necessário.
+
+## Postman
+
+- Collection incluída: `docs/postman/Koa Users Service.postman_collection.json`
+- Variáveis:
+  - `base_url` = `http://localhost:3000`
+  - `token` = cole aqui seu token (ID Token recomendado se precisar de grupos)
+- Importação: Postman > Import > File > selecione o JSON.
+- Execução em CI (opcional): use Newman.
+
+Exemplos rápidos (curl):
 ```bash
+# Health
 curl -i http://localhost:3000/health
+
+# Sign in
+curl -s -X POST http://localhost:3000/auth/signin \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+
+# /me
+TOKEN="<seu_token>"
+curl -s -X POST http://localhost:3000/me \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+
+# /users (admin)
+curl -s http://localhost:3000/users -H "Authorization: Bearer $TOKEN"
+
+# /edit-account
+curl -s -X POST http://localhost:3000/edit-account \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Novo Nome"}'
 ```
 
-**Resposta (200 OK):**
+## Testes
 
-```json
-{ "status": "ok" }
-```
+- Unitários (Jest): `npm test`
+- E2E (opcional): Postman + Newman executando a collection contra docker-compose.
 
-#### 2) Sign In (criar/buscar usuário)
+## Dicas e solução de problemas
 
+- Porta ocupada (3000): pare instâncias anteriores (`docker compose down`) ou altere `PORT`.
+- DB indisponível: verifique `docker compose ps`, variáveis do `.env` e aplique migrations.
+- Token inválido: confirme se está enviando o token correto (ID Token vs Access Token) e escopos (`openid email profile`).
+
+```// filepath: /home/lucasandrade/estudo/koa-users-service/README.md
+# Koa Users Service
+
+API REST em Node.js/TypeScript para gerenciamento de usuários, usando Koa.js, TypeORM, PostgreSQL e AWS Cognito (auth/authorization).
+
+## Funcionalidades
+- Autenticação com AWS Cognito (validação de token e grupos para RBAC).
+- CRUD de usuários (foco em listagem e edição de conta).
+- Rotas protegidas por middleware de autenticação e autorização.
+- Banco PostgreSQL com migrations (TypeORM).
+- Docker Compose para desenvolvimento.
+- Documentação via Swagger (OpenAPI) e Collection do Postman.
+
+## Pré-requisitos
+- Docker e Docker Compose
+- Node.js 18+ (opcional, se rodar localmente)
+- User Pool do Cognito configurado (domínio, client, grupos)
+
+## Configuração
+
+1) Clone o repositório
 ```bash
-curl -s -X POST http://localhost:3000/auth/signin   -H "Content-Type: application/json"   -d '{ "email": "user@example.com" }'
+git clone <URL_DO_REPO>
+cd <PASTA_DO_REPO>
 ```
 
-**Resposta (200 OK):**
-
-```json
-{ "user": { "id": 1, "email": "user@example.com", "role": "user", "isOnboarded": false } }
-```
-
-#### 3) Obter dados do usuário autenticado (`/me`)
-
+2) Configure o .env
 ```bash
-ACCESS_TOKEN="<cole_aqui_o_token>"
-curl -s -X POST http://localhost:3000/me   -H "Authorization: Bearer $ACCESS_TOKEN"
+cp .env.example .env
 ```
+Defina:
+- DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME
+- COGNITO_REGION, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, COGNITO_DOMAIN
+- PORT=3000
 
-**Resposta (200 OK):**
-
-```json
-{ "user": { "id": 1, "email": "user@example.com", "role": "user", "isOnboarded": true } }
-```
-
-**Erro (401 Unauthorized) – token inválido/ausente:**
-
-```json
-{ "message": "Invalid or expired token" }
-```
-
-#### 4) Listar todos os usuários (`/users` – apenas **admin**)
-
+3) Suba os serviços
 ```bash
-curl -s http://localhost:3000/users   -H "Authorization: Bearer $ACCESS_TOKEN"
+docker compose up -d --build
 ```
 
-**Resposta (200 OK) – admin:**
-
-```json
-{ "users": [{ "id": 1, "email": "user@example.com" }] }
-```
-
-**Erro (403 Forbidden) – usuário comum:**
-
-```json
-{ "message": "Forbidden: insufficient scope" }
-```
-
-#### 5) Editar conta (`/edit-account`)
-
+4) Rode as migrations
 ```bash
-curl -s -X POST http://localhost:3000/edit-account   -H "Authorization: Bearer $ACCESS_TOKEN"   -H "Content-Type: application/json"   -d '{ "name": "Novo Nome", "role": "admin" }'
+npm run migration:run
 ```
 
-**Resposta (200 OK) – usuário comum (apenas `name`):**
+## Execução
+- Dev: `npm run dev`
+- Prod: `npm run build && npm start`
 
-```json
-{ "user": { "id": 1, "name": "Novo Nome", "role": "user", "isOnboarded": true } }
-```
+## Endpoints
 
-**Erro (403 Forbidden) – usuário comum tentando alterar `role`:**
+- GET /health
+  - Público. Verifica o status da API.
 
-```json
-{ "message": "Forbidden: insufficient scope" }
-```
+- POST /auth/signin
+  - Público. Cria/retorna usuário no banco a partir do email no body.
+  - Body: `{ "email": "user@example.com" }`
 
----
+- POST /me
+  - Protegido. Valida o token e usa o email enviado no body para retornar o usuário do banco.
+  - Header: `Authorization: Bearer <token>`
+  - Body: `{ "email": "user@example.com" }`
 
-## 🔐 Como obter o **token** (ID Token ou Access Token)
+- GET /users
+  - Protegido (apenas admin). Lista todos os usuários cadastrados.
+  - Header: `Authorization: Bearer <token>`
 
-Use **Postman** (ou similar):
+- PUT /edit-account
+  - Protegido. Usuário comum: pode alterar apenas `name` (e marca `isOnboarded=true`). Admin: pode alterar `name` e `role`.
+  - Header: `Authorization: Bearer <token>`
+  - Body: `{ "name": "Novo Nome", "role": "admin" | "user" }` (role é ignorado/rejeitado para não-admin)
 
-- Configure **OAuth 2.0** apontando para seu **User Pool (Hosted UI)**  
-  `scope: openid email profile`
-- Faça login e copie o **token** (**access_token** recomendado para API; **id_token** se você exigir isso).
-- Use no header:
+Observação sobre autorização:
+- A verificação de “admin” é feita via grupos do Cognito (claim `cognito:groups` → `['admin']`). Garanta que o token enviado contenha os grupos (recomendado: ID Token com `openid email profile`).
 
-```
-Authorization: Bearer <SEU_TOKEN>
-```
 
----
+## Postman
 
-## 🧰 Scripts disponíveis
+- Collection incluída: `docs/postman/Koa Users Service.postman_collection.json`
+- Variáveis:
+  - `base_url` = `http://localhost:3000`
+  - `token` = cole aqui seu token (ID Token recomendado se precisar de grupos)
+- Importação: Postman > Import > File > selecione o JSON.
+- Execução em CI (opcional): use Newman.
 
+Exemplos rápidos (curl):
 ```bash
-npm run dev                # inicia em modo desenvolvimento
-npm run build              # compila TypeScript
-npm run start              # executa build (produção)
-npm run lint               # ESLint
-npm run migration:generate # gera nova migration
-npm run migration:run      # aplica migrations
-npm run migration:revert   # reverte última migration
+# Health
+curl -i http://localhost:3000/health
+
+# Sign in
+curl -s -X POST http://localhost:3000/auth/signin \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+
+# /me
+TOKEN="<seu_token>"
+curl -s -X POST http://localhost:3000/me \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+
+# /users (admin)
+curl -s http://localhost:3000/users -H "Authorization: Bearer $TOKEN"
+
+# /edit-account
+curl -s -X PUT http://localhost:3000/edit-account \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Novo Nome"}'
 ```
 
----
+## Testes
+
+- Unitários (Jest): `npm test`
+
+## Dicas e solução de problemas
+
+- Porta ocupada (3000): pare instâncias anteriores (`docker compose down`) ou altere `PORT`.
+- DB indisponível: verifique `docker compose ps`, variáveis do `.env` e aplique migrations.
+- Token inválido: confirme se está enviando o token correto (ID Token vs Access Token) e escopos (`openid email profile`).
