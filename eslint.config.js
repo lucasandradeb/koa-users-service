@@ -38,6 +38,6 @@ module.exports = [
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', '*.js.map', '*.d.ts'],
+    ignores: ['dist/', 'node_modules/', '*.js.map', '*.d.ts', 'src/database/migrations/*.ts'],
   },
 ];
